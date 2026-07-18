@@ -15,8 +15,11 @@ RUN mkdir -p /steamcmd && cd /steamcmd \
 
 ARG PZ_BUILDID=dev
 RUN echo "target buildid: ${PZ_BUILDID}" \
-    && /steamcmd/steamcmd.sh +force_install_dir /opt/pzserver +login anonymous \
-       +app_update 380870 validate +quit
+    && for i in 1 2 3 4 5; do \
+         /steamcmd/steamcmd.sh +force_install_dir /opt/pzserver +login anonymous +app_update 380870 validate +quit && break \
+         || { echo "steamcmd attempt $i failed (cold-start config race); sleep + retry"; sleep 10; }; \
+       done \
+    && test -f /opt/pzserver/steamapps/appmanifest_380870.acf
 
 
 FROM debian:12-slim
