@@ -14,6 +14,12 @@ GAMEDIR="$ZOMBOID/.gamectl/install"
 echo "gamectl: entrypoint starting (data: $ZOMBOID)"
 mkdir -p "$GAMEDIR" "$ZOMBOID/.gamectl/steamhome" "$ZOMBOID/Server"
 chown "$uid:$gid" "$ZOMBOID" "$ZOMBOID/Server" 2>/dev/null || true
+# Fix ownership of files dropped onto the share as root (e.g. an operator
+# scp'ing in saves/worlds) — kubelet does not apply fsGroup to NFS volumes,
+# and root-owned data files can break the server in silent ways (see
+# Necesse-Kube d4b719f). Only touches mismatched files; the steamcmd install
+# tree is pruned (large, root-managed, read-only for the run user).
+find "$ZOMBOID" -path "$ZOMBOID/.gamectl" -prune -o ! -user "$uid" -exec chown "$uid:$gid" {} + 2>/dev/null || true
 
 steamcmd_update() {
   for i in 1 2 3 4 5 6; do
