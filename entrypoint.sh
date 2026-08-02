@@ -46,6 +46,14 @@ fi
 ini="$ZOMBOID/Server/${name}.ini"
 touch "$ini"
 setkey() { grep -qE "^$1=" "$ini" && sed -i "s|^$1=.*|$1=$2|" "$ini" || echo "$1=$2" >> "$ini"; }
+# SERVER_PORT/UDP_PORT must be settable, not hardcoded. GameCTL recommends a
+# different port when the default is already claimed, and both the Service and
+# ProxyCTL's DNAT (which preserves the destination port) follow that choice --
+# so a server pinned to 16261 ends up listening where nothing is sent, with no
+# error in any log. Barotrauma-Kube shipped exactly this and sat unreachable
+# behind a 27022 forward while binding 27015.
+[ -n "${SERVER_PORT:-}" ]     && setkey DefaultPort "$SERVER_PORT"
+[ -n "${UDP_PORT:-}" ]        && setkey UDPPort "$UDP_PORT"
 [ -n "${RCON_PORT:-}" ]       && setkey RCONPort "$RCON_PORT"
 [ -n "${RCON_PASSWORD:-}" ]   && setkey RCONPassword "$RCON_PASSWORD"
 [ -n "${SERVER_PASSWORD:-}" ] && setkey Password "$SERVER_PASSWORD"
@@ -56,7 +64,7 @@ mkdir -p "$HOME/.steam/sdk64"
 ln -sf /opt/steamcmd/linux64/steamclient.so "$HOME/.steam/sdk64/steamclient.so"
 chown -R "$uid:$gid" "$HOME/.steam" 2>/dev/null || true
 
-echo "gamectl: starting Project Zomboid server '${name}' (16261-16262/udp, rcon ${RCON_PORT:-27015}/tcp)"
+echo "gamectl: starting Project Zomboid server '${name}' (${SERVER_PORT:-16261}-${UDP_PORT:-16262}/udp, rcon ${RCON_PORT:-27015}/tcp)"
 cd "$GAMEDIR"
 run=(./start-server.sh -cachedir="$ZOMBOID" -servername "$name" -adminpassword "${ADMIN_PASSWORD:-changeme}")
 if [ "$(id -u)" = "0" ]; then
